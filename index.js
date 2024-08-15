@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const moment = require("moment-timezone");
 require("dotenv").config();
 
 const port = process.env.PORT || 5000;
@@ -13,7 +15,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { MongoClient, ServerApiVersion } = require("mongodb");
 const uri = process.env.MONGODB;
 
 //MongoDB
@@ -28,6 +30,19 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
+    const movieCollection = client.db("MovieFlex").collection("Movies");
+
+    // Route to get all movies
+    app.get("/movies", async (req, res) => {
+      try {
+        const movies = await movieCollection.find({}).toArray();
+        res.status(200).json(movies);
+      } catch (error) {
+        console.error("Error retrieving movies:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
