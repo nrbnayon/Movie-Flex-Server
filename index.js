@@ -33,12 +33,17 @@ async function run() {
     const movieCollection = client.db("MovieFlex").collection("Movies");
 
     // Route to get all movies
-    app.get("/movies", async (req, res) => {
+    app.get("/top-movies", async (req, res) => {
       try {
-        const movies = await movieCollection.find({}).toArray();
+        const movies = await movieCollection
+          .find({})
+          .sort({ rating: -1 })
+          .limit(10)
+          .toArray();
+
         res.status(200).json(movies);
       } catch (error) {
-        console.error("Error retrieving movies:", error);
+        console.error("Error retrieving top movies:", error);
         res.status(500).json({ message: "Internal Server Error" });
       }
     });
