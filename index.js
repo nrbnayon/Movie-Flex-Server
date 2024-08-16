@@ -49,14 +49,33 @@ async function run() {
     });
 
     app.get("/all-movies", async (req, res) => {
-      const { page = 1, limit = 9 } = req.query;
+      const {
+        page = 1,
+        limit = 9,
+        query,
+        category,
+        rating,
+        minPrice,
+        maxPrice,
+        sortBy,
+      } = req.query;
+
+      let filter = {};
+      let sort = {};
+
+      // Search by movie name
+      if (query) {
+        filter.name = { $regex: new RegExp(query, "i") };
+      }
+      
       try {
         const movies = await movieCollection
-          .find({})
-          .skip((page - 1) * limit)
+          .find(filter)
+          .sort(sort)
+          .skip((page - 1) * parseInt(limit))
           .limit(parseInt(limit))
           .toArray();
-        const totalMovies = await movieCollection.countDocuments({});
+        const totalMovies = await movieCollection.countDocuments(filter);
         res.status(200).json({
           movies,
           totalPages: Math.ceil(totalMovies / limit),
