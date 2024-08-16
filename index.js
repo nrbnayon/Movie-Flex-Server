@@ -31,7 +31,88 @@ async function run() {
   try {
     await client.connect();
     const movieCollection = client.db("MovieFlex").collection("Movies");
+    const userCollection = client.db("MovieFlex").collection("allUsers");
 
+    //JWT
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(
+        user,
+        process.env.ACCESS_TOKEN_SECRET,
+
+        { expiresIn: "1h" }
+      );
+      res.send({ token });
+    });
+
+    // verify token
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "forbidden access" });
+      }
+      const token = req.headers.authorization.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "forbidden access" });
+        } else {
+          req.decoded = decoded;
+          next();
+        }
+      });
+    };
+
+    app.get("/users", verifyToken, async (req, res) => {
+      const searchQuery = req.query.search || "";
+      const filter = {
+        $or: [
+          { userName: { $regex: searchQuery, $options: "i" } },
+          { userEmail: { $regex: searchQuery, $options: "i" } },
+        ],
+      };
+
+      try {
+        const users = await userCollection.find(filter).toArray();
+        res.send(users);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal server error." });
+      }
+    });
+
+    app.get("/state", async (req, res) => {
+      try {
+        const result = await statsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send("Failed to fetch reviews");
+      }
+    });
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { userEmail: user.userEmail };
+      try {
+        const existingUser = await userCollection.findOne(query);
+        if (existingUser) {
+          return res
+            .status(409)
+            .send({ message: "User already exists", insertedId: null });
+        } else {
+          const result = await userCollection.insertOne(user);
+          await statsCollection.updateOne(
+            { _id: new ObjectId("665ce46ccce6c97b84e3c1a4") },
+            { $inc: { totalUsers: 1 } },
+            { upsert: true }
+          );
+
+          res.status(201).send(result);
+        }
+      } catch (error) {
+        console.error("Error inserting user:", error);
+        res.status(500).send("Failed to insert user");
+      }
+    });
     // Route to get all movies
     app.get("/top-movies", async (req, res) => {
       try {
