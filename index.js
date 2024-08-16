@@ -67,7 +67,36 @@ async function run() {
       if (query) {
         filter.name = { $regex: new RegExp(query, "i") };
       }
-      
+
+      // Filter by category
+      if (category) {
+        filter.category = category;
+      }
+
+      // Filter by rating
+      if (rating) {
+        filter.rating = { $gte: parseFloat(rating) };
+      }
+
+      // Filter by price range
+      if (minPrice && maxPrice) {
+        filter.price = {
+          $gte: parseFloat(minPrice),
+          $lte: parseFloat(maxPrice),
+        };
+      }
+
+      // Sorting logic
+      if (sortBy === "createdAtDesc") {
+        sort.createdAt = -1;
+      } else if (sortBy === "createdAtAsc") {
+        sort.createdAt = 1;
+      } else if (sortBy === "priceAsc") {
+        sort.price = 1;
+      } else if (sortBy === "priceDesc") {
+        sort.price = -1;
+      }
+
       try {
         const movies = await movieCollection
           .find(filter)
