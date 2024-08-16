@@ -48,6 +48,26 @@ async function run() {
       }
     });
 
+    app.get("/all-movies", async (req, res) => {
+      const { page = 1, limit = 9 } = req.query;
+      try {
+        const movies = await movieCollection
+          .find({})
+          .skip((page - 1) * limit)
+          .limit(parseInt(limit))
+          .toArray();
+        const totalMovies = await movieCollection.countDocuments({});
+        res.status(200).json({
+          movies,
+          totalPages: Math.ceil(totalMovies / limit),
+          currentPage: parseInt(page),
+        });
+      } catch (error) {
+        console.error("Error retrieving movies:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
